@@ -122,4 +122,106 @@ describe('autoInject', () => {
             done();
         });
     });
+
+    it('should be cancelable', (done) => {
+        var call_order = [];
+
+        async.autoInject({
+            task1 (cb) {
+                call_order.push('task1');
+                cb(null, 1);
+            },
+            task2 (task3, cb) {
+                call_order.push('task2');
+                cb(null, 2);
+            },
+            task3 (cb) {
+                call_order.push('task3');
+                cb(false);
+            },
+        }, () => {
+            throw new Error('should not get here');
+        });
+
+        setTimeout(() => {
+            expect(call_order).to.eql(['task1', 'task3']);
+            done();
+        }, 25);
+    });
+
+    it('should work with complicated functions', done => {
+        async.autoInject({
+            one: (cb) => cb(null, 1),
+            two: (cb) => cb(null, 2),
+            three: (cb) => cb(null, 3),
+            result: (one, two, three, cb) => {
+                if (!one || !two || !three) {
+                    return cb('fail')
+                }
+                function add (a, b, c) {
+                    return  a + b + c
+                }
+                add(one, two, three)
+                cb(null, 1 + 2 + 3)
+            }
+        }, (err, results) => {
+            expect(results).to.eql({ one: 1, two: 2, three: 3, result: 6 })
+            done()
+        })
+    })
+
+    it('should work with functions with args on multiple lines', done => {
+        async.autoInject({
+            one: (cb) => cb(null, 1),
+            two: (cb) => cb(null, 2),
+            three: (cb) => cb(null, 3),
+            result: function (
+                one,
+                two,
+                three,
+                cb
+            ) {
+                cb(null, 1 + 2 + 3)
+            }
+        }, (err, results) => {
+            expect(results).to.eql({ one: 1, two: 2, three: 3, result: 6 })
+            done()
+        })
+    })
+
+    it('should work with methods with args on multiple lines', done => {
+        async.autoInject({
+            one: (cb) => cb(null, 1),
+            two: (cb) => cb(null, 2),
+            three: (cb) => cb(null, 3),
+            result (
+                one,
+                two,
+                three,
+                cb
+            ) {
+                cb(null, 1 + 2 + 3)
+            }
+        }, (err, results) => {
+            expect(results).to.eql({ one: 1, two: 2, three: 3, result: 6 })
+            done()
+        })
+    })
+
+    it('should work with arrow functions with args on multiple lines', done => {
+        async.autoInject({
+            one: (cb) => cb(null, 1),
+            two: (cb) => cb(null, 2),
+            three: (cb) => cb(null, 3),
+            result: (
+                one,
+                two,
+                three,
+                cb
+            ) => cb(null, 1 + 2 + 3)
+        }, (err, results) => {
+            expect(results).to.eql({ one: 1, two: 2, three: 3, result: 6 })
+            done()
+        })
+    })
 });

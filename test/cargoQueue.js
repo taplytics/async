@@ -11,12 +11,35 @@ describe('cargoQueue', () => {
 
     it('cargoQueue', (done) => {
         var call_order = [],
-            delays = [40, 40, 20];
+            delays = [50, 50, 50];
 
         // worker: --12--34--5-
         // order of completion: 1,2,3,4,5
 
         var c = async.cargoQueue((tasks, callback) => {
+            if (tasks[0] === 1) {
+                c.push(3, (err, arg) => {
+                    expect(err).to.equal('error');
+                    expect(arg).to.equal('arg');
+                    expect(c.length()).to.equal(0);
+                    call_order.push('callback ' + 3);
+                });
+            } else if (tasks[0] === 3) {
+                c.push(4, (err, arg) => {
+                    expect(err).to.equal('error');
+                    expect(arg).to.equal('arg');
+                    expect(c.length()).to.equal(0);
+                    call_order.push('callback ' + 4);
+                });
+                expect(c.length()).to.equal(1);
+                c.push(5, (err, arg) => {
+                    expect(err).to.equal('error');
+                    expect(arg).to.equal('arg');
+                    expect(c.length()).to.equal(0);
+                    call_order.push('callback ' + 5);
+                });
+            }
+
             setTimeout(() => {
                 call_order.push('process ' + tasks.join(' '));
                 callback('error', 'arg');
@@ -38,33 +61,7 @@ describe('cargoQueue', () => {
 
         expect(c.length()).to.equal(2);
 
-        // async push
-        setTimeout(() => {
-            c.push(3, (err, arg) => {
-                expect(err).to.equal('error');
-                expect(arg).to.equal('arg');
-                expect(c.length()).to.equal(0);
-                call_order.push('callback ' + 3);
-            });
-        }, 15);
-        setTimeout(() => {
-            c.push(4, (err, arg) => {
-                expect(err).to.equal('error');
-                expect(arg).to.equal('arg');
-                expect(c.length()).to.equal(0);
-                call_order.push('callback ' + 4);
-            });
-            expect(c.length()).to.equal(1);
-            c.push(5, (err, arg) => {
-                expect(err).to.equal('error');
-                expect(arg).to.equal('arg');
-                expect(c.length()).to.equal(0);
-                call_order.push('callback ' + 5);
-            });
-        }, 30);
-
-
-        c.drain = function () {
+        c.drain(() => {
             expect(call_order).to.eql([
                 'process 1 2', 'callback 1', 'callback 2',
                 'process 3', 'callback 3',
@@ -72,7 +69,7 @@ describe('cargoQueue', () => {
             ]);
             expect(c.length()).to.equal(0);
             done();
-        };
+        });
     });
 
     it('without callback', (done) => {
@@ -86,7 +83,7 @@ describe('cargoQueue', () => {
                 c.push(4);
                 setImmediate(() => {
                     c.push(5);
-                    c.drain = function complete () {
+                    c.drain(() => {
                         expect(call_order).to.eql([
                             'process 1',
                             'process 2',
@@ -94,7 +91,7 @@ describe('cargoQueue', () => {
                             'process 5'
                         ]);
                         done();
-                    }
+                    })
                 })
             })
         })
@@ -138,9 +135,9 @@ describe('cargoQueue', () => {
         }, 3, 2);
 
         var drainCounter = 0;
-        c.drain = function () {
+        c.drain(() => {
             drainCounter++;
-        };
+        });
 
         for(var i = 0; i < 10; i++){
             c.push(i);
@@ -165,17 +162,18 @@ describe('cargoQueue', () => {
         }
 
         var drainCounter = 0;
-        c.drain = function () {
+        c.drain(() => {
             drainCounter++;
-        };
+
+            if (drainCounter === 1) {
+                loadCargo();
+            } else {
+                expect(drainCounter).to.equal(2);
+                done();
+            }
+        });
 
         loadCargo();
-        setTimeout(loadCargo, 50);
-
-        setTimeout(() => {
-            expect(drainCounter).to.equal(2);
-            done();
-        }, 100);
     });
 
     it('events', (done) => {
@@ -186,15 +184,15 @@ describe('cargoQueue', () => {
             async.setImmediate(cb);
         }, 3, 1);
 
-        q.saturated = function() {
+        q.saturated(() => {
             assert(q.running() == 3, 'cargoQueue should be saturated now');
             calls.push('saturated');
-        };
-        q.empty = function() {
+        });
+        q.empty(() => {
             assert(q.length() === 0, 'cargoQueue should be empty now');
             calls.push('empty');
-        };
-        q.drain = function() {
+        });
+        q.drain(() => {
             assert(
                 q.length() === 0 && q.running() === 0,
                 'cargoQueue should be empty now and no more workers should be running'
@@ -218,7 +216,7 @@ describe('cargoQueue', () => {
                 'drain'
             ]);
             done();
-        };
+        });
         q.push('foo', () => {calls.push('foo cb');});
         q.push('bar', () => {calls.push('bar cb');});
         q.push('zoo', () => {calls.push('zoo cb');});
@@ -240,9 +238,7 @@ describe('cargoQueue', () => {
             setTimeout(cb, 25);
         }, 1, 1);
 
-        cargo.drain = function () {
-            done();
-        };
+        cargo.drain(done);
 
         expect(cargo.payload).to.equal(1);
 
@@ -266,9 +262,7 @@ describe('cargoQueue', () => {
             setTimeout(cb, 25);
         }, 1, 1);
 
-        cargo.drain = function () {
-            done();
-        };
+        cargo.drain(done);
 
         expect(cargo.concurrency).to.equal(1);
 
@@ -303,11 +297,11 @@ describe('cargoQueue', () => {
             });
         }, 1, 2);
 
-        cargo.drain = function() {
+        cargo.drain(() => {
             expect(cargo.workersList()).to.eql([]);
             expect(cargo.running()).to.equal(0);
             done();
-        };
+        });
 
         cargo.push('foo');
         cargo.push('bar');
@@ -323,10 +317,10 @@ describe('cargoQueue', () => {
             });
         }, 1, 1);
 
-        cargo.drain = function() {
+        cargo.drain(() => {
             expect(cargo.running()).to.equal(0);
             done();
-        };
+        });
 
         cargo.push(['foo', 'bar', 'baz', 'boo']);
     })

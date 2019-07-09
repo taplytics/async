@@ -35,6 +35,28 @@ describe('whilst', () => {
         );
     });
 
+    it('errors', (done) => {
+        async.whilst(
+            cb => cb(new Error('bad test')),
+            cb => cb(),
+            err => {
+                expect(err.message).to.equal('bad test')
+                done()
+            }
+        )
+    })
+
+    it('errors (iteratee)', (done) => {
+        async.whilst(
+            cb => cb(null, true),
+            cb => cb(new Error('bad iter')),
+            err => {
+                expect(err.message).to.equal('bad iter')
+                done()
+            }
+        )
+    })
+
     it('whilst optional callback', (done) => {
         var counter = 0;
         async.whilst(
@@ -62,6 +84,24 @@ describe('whilst', () => {
             expect(counter).to.equal(2);
             done();
         }, 10)
+    });
+
+    it('should not error when test is false on first iteration', (done) => {
+        var counter = 0;
+
+        async.whilst(
+            (cb) => cb(null, false),
+            (cb) => {
+                counter++;
+                cb(null);
+            },
+            (err, result) => {
+                expect(err).to.eql(null);
+                expect(result).to.be.undefined;
+                expect(counter).to.equal(0);
+                done();
+            }
+        );
     });
 
     it('doWhilst', (done) => {

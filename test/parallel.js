@@ -58,6 +58,27 @@ describe('parallel', () => {
         setTimeout(done, 100);
     });
 
+    it('parallel canceled', (done) => {
+        var call_order = [];
+        async.parallel([
+            function(callback) {
+                call_order.push('one');
+                callback(false);
+            },
+            function(callback){
+                call_order.push('two');
+                callback(null);
+            }
+        ], () => {
+            throw new Error('should not get here');
+        });
+
+        setTimeout(() => {
+            expect(call_order).to.eql(['one', 'two']);
+            done();
+        }, 25);
+    });
+
     it('parallel no callback', (done) => {
         async.parallel([
             function(callback){callback();},
@@ -122,19 +143,19 @@ describe('parallel', () => {
                 setTimeout(() => {
                     call_order.push(1);
                     callback(null, 1);
-                }, 50);
+                }, 10);
             },
             function(callback){
                 setTimeout(() => {
                     call_order.push(2);
                     callback(null, 2);
-                }, 100);
+                }, 180);
             },
             function(callback){
                 setTimeout(() => {
                     call_order.push(3);
                     callback(null, 3,3);
-                }, 25);
+                }, 10);
             }
         ],
         2,
@@ -248,14 +269,18 @@ describe('parallel', () => {
             }),
             async.reflect((callback) => {
                 callback(null, 2);
+            }),
+            async.reflect((callback) => {
+                callback('error3');
             })
         ],
         (err, results) => {
             assert(err === null, err + " passed instead of 'null'");
             expect(results).to.eql([
-                { error: 'error' },
-                { error: 'error2' },
-                { value: 2 }
+                { error: 'error', value: 1 },
+                { error: 'error2', value: 2 },
+                { value: 2 },
+                { error: 'error3' },
             ]);
             done();
         });
@@ -275,6 +300,11 @@ describe('parallel', () => {
                 setTimeout(() => {
                     callback(null, 'three');
                 }, 100);
+            },
+            four(callback) {
+                setTimeout(() => {
+                    callback('four', 4);
+                }, 100);
             }
         };
 
@@ -282,7 +312,8 @@ describe('parallel', () => {
             expect(results).to.eql({
                 one: { value: 'one' },
                 two: { error: 'two' },
-                three: { value: 'three' }
+                three: { value: 'three' },
+                four: { error: 'four', value: 4 }
             });
             done();
         })
@@ -297,25 +328,25 @@ describe('parallel', () => {
         })
     });
 
-    it('parallel empty object with reflect all (errors)', (done) => {
-        var tasks = {
-            one(callback) {
-                callback('one');
+    it('parallel array with reflect all (errors)', (done) => {
+        var tasks = [
+            function (callback) {
+                callback('one', 1);
             },
-            two(callback) {
+            function (callback) {
                 callback('two');
             },
-            three(callback) {
-                callback('three');
+            function (callback) {
+                callback('three', 3);
             }
-        };
+        ];
 
         async.parallel(async.reflectAll(tasks), (err, results) => {
-            expect(results).to.eql({
-                one: { error: 'one' },
-                two: { error: 'two' },
-                three: { error: 'three' }
-            });
+            expect(results).to.eql([
+                { error: 'one', value: 1 },
+                { error: 'two' },
+                { error: 'three', value: 3 }
+            ]);
             done();
         })
     });

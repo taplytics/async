@@ -20,7 +20,7 @@ describe('times', () => {
             setTimeout(() => {
                 args.push(n);
                 callback();
-            }, n * 25);
+            }, 15);
         }, (err) => {
             if (err) throw err;
             expect(args).to.eql([0,1,2]);
@@ -45,7 +45,25 @@ describe('times', () => {
         }, (err) => {
             expect(err).to.equal('error');
         });
-        setTimeout(done, 50);
+        setTimeout(done, 10);
+    });
+
+    it('times canceled', (done) => {
+        var call_order = [];
+        async.times(5, (n, callback) => {
+            call_order.push(n);
+            if (n === 2) {
+                return callback(false, n);
+            }
+            callback(null, n);
+        }, () => {
+            throw new Error('should not get here');
+        });
+
+        setTimeout(() => {
+            expect(call_order).to.eql([0,1,2]);
+            done();
+        }, 25);
     });
 
     it('timesSeries', (done) => {
@@ -54,7 +72,7 @@ describe('times', () => {
             setTimeout(() => {
                 call_order.push(n);
                 callback(null, n);
-            }, 100 - n * 10);
+            }, 5);
         }, (err, results) => {
             expect(call_order).to.eql([0,1,2,3,4]);
             expect(results).to.eql([0,1,2,3,4]);
@@ -68,7 +86,27 @@ describe('times', () => {
         }, (err) => {
             expect(err).to.equal('error');
         });
-        setTimeout(done, 50);
+        setTimeout(done, 10);
+    });
+
+    it('timesSeries canceled', (done) => {
+        var call_order = [];
+        async.timesSeries(5, (n, callback) => {
+            call_order.push(n);
+            async.setImmediate(() => {
+                if (n === 2) {
+                    return callback(false, n);
+                }
+                callback(null, n);
+            })
+        }, () => {
+            throw new Error('should not get here');
+        });
+
+        setTimeout(() => {
+            expect(call_order).to.eql([0,1,2]);
+            done();
+        }, 25);
     });
 
     it('timesLimit', (done) => {
@@ -86,5 +124,25 @@ describe('times', () => {
             expect(results).to.eql([0, 2, 4, 6, 8]);
             done();
         });
+    });
+
+    it('timesLimit canceled', (done) => {
+        var call_order = [];
+        async.timesLimit(5, 2, (n, callback) => {
+            call_order.push(n);
+            async.setImmediate(() => {
+                if (n === 2) {
+                    return callback(false, n);
+                }
+                callback(null, n);
+            })
+        }, () => {
+            throw new Error('should not get here');
+        });
+
+        setTimeout(() => {
+            expect(call_order).to.eql([0,1,2,3]);
+            done();
+        }, 25);
     });
 });

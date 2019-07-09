@@ -9,6 +9,8 @@ module.exports = function () {
         return res;
     }
 
+    this.retries(3);
+
     const input = [1, 2, 3];
     const inputObj = {a: 1, b: 2, c: 3};
 
@@ -270,14 +272,14 @@ module.exports = function () {
      */
 
     it('should handle async functions in applyEach', (done) => {
-        async.applyEach([asyncIdentity, asyncIdentity])(input, (err, result) => {
+        async.applyEach([asyncIdentity, asyncIdentity], input)((err, result) => {
             expect(result).to.eql([input, input]);
             done(err);
         });
     });
 
     it('should handle async functions in applyEachSeries', (done) => {
-        async.applyEachSeries([asyncIdentity, asyncIdentity])(input, (err, result) => {
+        async.applyEachSeries([asyncIdentity, asyncIdentity], input)((err, result) => {
             expect(result).to.eql([input, input]);
             done(err);
         });
@@ -303,14 +305,14 @@ module.exports = function () {
     /* eslint prefer-arrow-callback: 0, object-shorthand: 0 */
     it('should handle async functions in autoInject', (done) => {
         async.autoInject({
-            z: async function(){ return 0},
-            a: async function a () {
-                return await Promise.resolve(1);
+            z: async function () { return 0 },
+            a: async function () {
+                return 1;
             },
-            b: async function (a) {
-                return await Promise.resolve(a + 1);
+            b: function (a, next) {
+                next(null, a + 1);
             },
-            c: async (a, b) => {
+            async c(a, b) {
                 return await Promise.resolve(a + b);
             },
             d: async c => {
@@ -348,10 +350,10 @@ module.exports = function () {
             result.push(await Promise.resolve(val));
         }, 2)
 
-        q.drain = () => {
+        q.drain(() => {
             expect(result).to.eql([[1, 2], [3]]);
             done();
-        };
+        });
 
         q.push(1);
         q.push(2);
@@ -364,10 +366,10 @@ module.exports = function () {
             result.push(await Promise.resolve(val));
         }, 2)
 
-        q.drain = () => {
+        q.drain(() => {
             expect(result).to.eql([1, 2, 3]);
             done();
-        };
+        });
 
         q.push(1);
         q.push(2);
@@ -380,10 +382,10 @@ module.exports = function () {
             result.push(await Promise.resolve(val));
         }, 2)
 
-        q.drain = () => {
+        q.drain(() => {
             expect(result).to.eql([1, 2, 3]);
             done();
-        };
+        });
 
         q.push(1);
         q.push(2);
@@ -656,7 +658,10 @@ module.exports = function () {
             throw thrown;
         });
         fn(1, (err, result) => {
-            expect(result).to.eql({error: thrown});
+            expect(result).to.eql({
+                error: thrown,
+                value: undefined
+            });
             done(err);
         })
     });
@@ -673,7 +678,7 @@ module.exports = function () {
         var fn = async.timeout(async (val) => {
             await new Promise((resolve) => setTimeout(resolve, 100));
             return val;
-        }, 50);
+        }, 20);
         fn(1, (err) => {
             expect(err.message).to.match(/timed out/);
             done();

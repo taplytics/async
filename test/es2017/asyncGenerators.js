@@ -26,12 +26,14 @@ module.exports = function () {
         }
     }
 
+    this.retries(3);
+
     it('should handle async generators in each', (done) => {
         const calls = []
         async.each(range(5),
             async (val) => {
                 calls.push(val)
-                await delay(5)
+                await delay(1)
             }, (err) => {
                 if (err) throw err
                 expect(calls).to.eql([0, 1, 2, 3, 4])
@@ -82,4 +84,34 @@ module.exports = function () {
             }
         )
     });
+
+    it('should handle async iterables in each (errors)', (done) => {
+        const calls = []
+        async.each(new AsyncIterable(5),
+            async (val) => {
+                calls.push(val)
+                if (val === 3) throw new Error('fail')
+                await delay(5)
+            }, (err) => {
+                expect(err.message).to.equal('fail')
+                expect(calls).to.eql([0, 1, 2, 3])
+                done()
+            }
+        )
+    })
+
+    it('should handle async iterables in each (cancelled)', async () => {
+        const calls = []
+        async.each(new AsyncIterable(5),
+            (val, cb) => {
+                calls.push(val)
+                if (val === 2) cb(false)
+                cb()
+            }, () => {
+                throw new Error('should not get here')
+            }
+        )
+        await delay(20)
+        expect(calls).to.eql([0, 1, 2])
+    })
 }

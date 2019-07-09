@@ -9,7 +9,7 @@
 
 Async is a utility module which provides straight-forward, powerful functions
 for working with asynchronous JavaScript. Although originally designed for
-use with [Node.js](https://nodejs.org/) and installable via `npm install --save async`,
+use with [Node.js](https://nodejs.org/) and installable via `npm install async`,
 it can also be used directly in the browser.
 
 Async is also installable via:
@@ -126,7 +126,7 @@ Async accepts `async` functions wherever we accept a Node-style callback functio
 ```js
 async.mapLimit(files, 10, async file => { // <- no callback!
     const text = await util.promisify(fs.readFile)(dir + file, 'utf8')
-    const body = JSON.parse(text) // <- a parse error herre will be caught automatically
+    const body = JSON.parse(text) // <- a parse error here will be caught automatically
     if (!(await checkValidity(body))) {
         throw new Error(`${file} has invalid contents`) // <- this error will also be caught
     }
@@ -218,7 +218,7 @@ The source is available for download from
 Alternatively, you can install using npm:
 
 ```bash
-$ npm install --save async
+$ npm install async
 ```
 
 As well as using Bower:
@@ -244,7 +244,9 @@ __Development:__ [async.js](https://raw.githubusercontent.com/caolan/async/maste
 
 ### In the Browser
 
-Async should work in any ES5 environment (IE9 and above).
+Async should work in any ES2015 environment (Node 6+ and all modern browsers).
+
+If you want to use Async in an older environment, (e.g. Node 4, IE11) you will have to transpile.
 
 Usage:
 
@@ -264,10 +266,12 @@ included in the `/dist` folder. Async can also be found on the [jsDelivr CDN](ht
 
 ### ES Modules
 
-We also provide Async as a collection of ES2015 modules, in an alternative `async-es` package on npm.
+Async includes a `.mjs` version that should automatically be used by compatible bundlers such as Webpack or Rollup, anything that uses the `module` field of the `package.json`.
+
+We also provide Async as a collection of purely ES2015 modules, in an alternative `async-es` package on npm.
 
 ```bash
-$ npm install --save async-es
+$ npm install async-es
 ```
 
 ```js
